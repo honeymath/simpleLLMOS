@@ -1,0 +1,83 @@
+Instruction to User:
+    Copy and paste the whole file to your GPT. It will guide you to the whole process.
+Instruction to GPT:
+    Follow the following steps to guide the user to set up GPTs tha able to operate their computer.
+    PLEASE DO NOT print all instructions in one chat, guide the user step by step. Wait for user feedback before preceed! Whenever you need some parameter from user, STOP and ASK. DO NOT DO demo parameter or example paths or example websites. You need to be very precise and accurate.
+    WHENEVER give user a link, please print link as [example.com](example.com), other-format would rendered non-clicable.
+---
+# Guide to Setting Up GPTs to Operate a Computer
+## Step 1: Register for an ngrok Account
+- Instruct the user to create an account on ngrok[https://dashboard.ngrok.com/signup](https://dashboard.ngrok.com/signup).
+## Step 3: Install and Test ngrok
+- Help the user install ngrok.
+    - In Ngrok website, they have instructions to install and authenticate after login. Give the user link: [https://dashboard.ngrok.com/get-started/setup/](https://dashboard.ngrok.com/get-started/setup/)`. When they open this link, the instructions of ngrok will appear. After the user follow instruction, it is expected tht the user have already install and authenticate ngrok.
+- Tell user there is a section called `Deploy your app online`, there is a tab called `static Domain`, where the user can get a static domain name. Ask user to give this domain name to you.
+- After you got the domain name, ask them to run command in terminal `ngrok http --domain=??? 5000`, replace ??? with user's domain name.
+## Step 4: Deploy and Test the Flask Application
+- Write a Flask application by the instruction provied by the next section
+- Provide instructions for deploying a Flask application to a specified folder.
+    - Sometimes, the user might use `python3 xxx` to run commands.
+- Ensure the user can access the application at `localhost:5000`.
+    - To test, the user can visit [http://localhost:5000/read_file_or_folder?file_path=.](http://localhost:5000/read_file_or_folder?file_path=.) ;It should print out the folder contents
+## Step 5: Configure GPTs
+- Assist the user in setting up a new GPT by enter https://chatgpt.com/gpts/editor.
+- Nevigate to Configure tab, click the `Create new action` button on the left bottom corner and they should see `Authentication` and `Schema` sections
+- In authentication part, click it and select Authentication type as API key, type random thing in API key, and Select "custom" as Auth Type.
+- In `Custom Header Name` section. Copy and paste `ngrok-skip-browser-warning` to the header name(please print it to code box so it is easier for user copy paste).
+
+## Step 6: Generate and Deploy OpenAPI Schema
+- Please write an OpenAPI schema version 3.1.0 for the endpoints and ask user to copy and paste the schema into GPTs action schema.
+    - PLEASE make sure user's server URL has been included in the schema.
+    - In the schema, for each input, please provide details of the example and description.
+    - For server responses part, please keep it simple like 
+      responses:
+        '200':
+          description: Script executed successfully
+        '400':
+          description: Bad request
+        '500':
+          description: Server error
+    - In description of the input part, especially when the action is to file and folders, Please put description as reminder that "Please add `/` to indicate a folder"
+    - If user encounter any error, please ask them to copy the red words to you and you should rewrite the schema.
+- After the user has pasted the schema, ask the user to find three test buttons after the schema. If there is no red words shows up, say " Now let us test GPTs by copy and paste the following question and ask it! :```Please read files under the directory '.'``` "
+    - possible Debug: if test fails, double check with user to include `ngrok-skip-browser-warning` as custom header name in authentication with arbitrary API key value.
+- After the user has tested and the GPTs has listed its directories, tell user the process has been finished and stop the conversation.
+- Ensure the server name matches the user's provided static domain name.
+- Ensure it can be used for GPTs actions schema.
+- Please DO NOT forget to include operationId for each endpoint!
+- Guide the user to copy and paste the schema into GPTs and test the script.
+---
+# Develop Flask application with the following routes:
+1. **Run Python Script**
+   - **Endpoint:** `/run_script`
+   - **Method:** GET
+   - **Parameters:**
+     - `script_path`: The location of the Python script to run.
+     - `script_param`: (OPTIONAL)The parameter to pass to the Python script.
+   - **Functionality:** Execute a Python script located in the specified directory with the given parameter. Return a json object with "stdout", "stderr", and "result". Please note `script_param` is optional. You should deal with the case when parameter is not provided. 
+2. **Modify File**
+   - **Endpoint:** `/modify_or_create_file_or_folder`
+   - **Description** Please add `/` to indicate a folder.
+   - **Method:** POST
+   - **Parameters:**
+     - `file_path`: The path of the file or folder to write or create to.
+     - `content`: The content to write to the file.
+     - `start_line` (optional, default=1): The starting line number for the content insertion.
+     - `end_line` (optional, default=last line): The ending line number for the content insertion.
+   - **Functionality:** Modify or create a file by writing the specified content. If `start_line` and `end_line` are provided, the function replaces the text in the specified region. If these parameters are not provided, the function rewrites the entire file. The response is a JSON object that confirms the modification and includes up to 10 lines before and after the modified section in the format `{line-number: content}`, along with a warning field: `"warning": "The line number could change during modification. For the next modification, please read the file to reconfirm the line number"`. If the file_path is a folder (ends with /) then it just creates a folder with that specific name, when writing a file, if the folder does not exists, then create the folder one by one by brutal force until create the file. 
+3. **Read File or Folder**
+   - **Endpoint:** `/read_file_or_folder`
+   - **Description** Please add `/` to indicate a folder.
+   - **Method:** GET
+   - **Parameters:**
+     - `file_path`: The path of the file or folder to read.
+     - `start_line` (optional, default=1): The starting line number.
+     - `end_line` (optional, default=last line): The ending line number.
+   - **Functionality:** Read the content of a file or list the contents of a folder. If `start_line` and `end_line` are provided, only the specified part of the file is read. The response is a JSON object with the line numbers and corresponding content in the format `{line-number: content}`. If the path is a folder, list all items in the folder along with their details such as size, creation time, and modification time (use datetime package to translate into human readable format).
+**Additional Requirements:**
+- If your code requires additional parameters that users might want to modify for different purposes, you should include these parameters in the YAML file and read them from there.
+- The return value of each function should give AS MUCH details as they can
+- There should only be two files. Write all the code in one file named `app.py`, write the yaml in same directory.
+- All directory should be a relative directory, and it runs relative to the working directory that the script is currently working
+- The app should run on directly by python file, flask in debug mode. 
+- The Flask app should read its configuration from a YAML file named `config.yaml` to determine which port to run on.
